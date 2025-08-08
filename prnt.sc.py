@@ -9,6 +9,8 @@ import random
 import subprocess
 from hashlib import sha1
 import webbrowser
+from threading import Thread
+from time import sleep
 
 
 headers = {
@@ -47,8 +49,13 @@ headers_img = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
 }
 
-current_image = bytes()
-IMG_HISTORY = list()
+
+CURRENT_IMAGE = dict()
+NEXT_IMAGES = list()  # lists of dicts
+PREV_IMAGES = list()
+ALREADY_CHECKED = list()
+KYS = False
+
 FONT = ("Calibri", 12)
 
 
@@ -78,11 +85,9 @@ def get_image(img_id: str = "abc123"):
     return img_id, img_src, img.content
 
 
-def save_image(img_id: str, img: bytes):
-    if not img:
-        return
-    with open(f"{img_id}.png", "wb") as f:
-        f.write(img)
+def save_image():
+    with open(f"{CURRENT_IMAGE['img_id']}.png", "wb") as f:
+        f.write(CURRENT_IMAGE["original"])
 
 
 def open_folder():
@@ -96,76 +101,116 @@ def open_folder():
         tkinter.messagebox.Message(title="Info", message="OS not supported").show()
 
 
-def open_browser(img_id):
-    webbrowser.open("https://prnt.sc/" + img_id)
+def open_browser():
+    global CURRENT_IMAGE
+    global NEXT_IMAGES
+    global PREV_IMAGES
+    webbrowser.open("https://prnt.sc/" + CURRENT_IMAGE["img_id"])
 
 
 def back(window, label):
-    img_id = window.title()[8:]
+    global CURRENT_IMAGE
+    global NEXT_IMAGES
+    global PREV_IMAGES
+
+    if PREV_IMAGES == [{}]:
+        tkinter.messagebox.Message(message="There is no previous image", title="Info").show()
+        return
+    NEXT_IMAGES = [CURRENT_IMAGE, *NEXT_IMAGES]
+    CURRENT_IMAGE = PREV_IMAGES[-1]
+    PREV_IMAGES.pop(len(PREV_IMAGES) - 1)
+    img_id = CURRENT_IMAGE["img_id"]
+    img_resized_bytes = CURRENT_IMAGE["resized"]
+    windows_geometry = CURRENT_IMAGE["window_geometry"]
+    window.title(f"prnt.sc/{img_id}")
+    window.geometry(windows_geometry)
+    tkimg = ImageTk.PhotoImage(img_resized_bytes)
+    label.configure(image=tkimg)
+    label.image = tkimg
+    """img_id = window.title()[8:]
     if IMG_HISTORY and not img_id == IMG_HISTORY[0]:
         regenerate(window, label, img_id=IMG_HISTORY[IMG_HISTORY.index(img_id) - 1])
     else:
-        tkinter.messagebox.Message(message="There is no previous image", title="Info").show()
+        tkinter.messagebox.Message(message="There is no previous image", title="Info").show()"""
 
 
 def next(window, label):
-    img_id = window.title()[8:]
-    if IMG_HISTORY and not img_id == IMG_HISTORY[-1]:
-        regenerate(window, label, img_id=IMG_HISTORY[IMG_HISTORY.index(img_id) + 1])
-    else:
-        regenerate(window, label)
-
-
-def regenerate(window, label, img_id=""):
-    global current_image
-    img_supplied = False if not img_id else True
-    image = None
-    if img_id:
-        raw = get_image(img_id)
-        if raw is not None:
-            image = raw[-1]
-    while image is None:
-        img_id = ""
-        while img_id in IMG_HISTORY or img_id == "":
-            img_id = ""
-            for i in range(6):
-                img_id += chr(random.choice([*range(48, 58), *range(97, 121)]))
-        print(img_id)
-        raw = get_image(img_id)
-        if raw is not None:
-            image = raw[-1]
-    current_image = image
-    img_infos = Image.open(io.BytesIO(image))
-    width = img_infos.width
-    height = img_infos.height + 50
-    max_width = 1600
-    min_width = 415
-    max_height = 800
-    print((width, height))
-    if width <= 0 or img_infos.height <= 0:
-        return regenerate(window, label)
-    if width / height > 16 / 9 and width > max_width:
-        window.geometry(f"{max_width}x{int(round(max_width / (width / height))) + 50}")
-        img_infos = img_infos.resize((max_width, int(round(max_width / (width / height)))))
-    if width / height < 16 / 9 and height > max_height:
-        window.geometry(f"{int(round(max_height / (height / width)))}x{max_height + 50}")
-        img_infos = img_infos.resize((int(round(max_height / (height / width))), max_height))
-    if width < min_width:
-        window.geometry(f"{min_width}x{height}")
-    else:
-        window.geometry(f"{img_infos.width}x{img_infos.height + 50}")
+    global CURRENT_IMAGE
+    global NEXT_IMAGES
+    global PREV_IMAGES
+    PREV_IMAGES.append(CURRENT_IMAGE)
+    if len(PREV_IMAGES) > 110:
+        PREV_IMAGES = PREV_IMAGES[10:]
+    while not NEXT_IMAGES:
+        sleep(1/120)
+    CURRENT_IMAGE = NEXT_IMAGES[0]
+    NEXT_IMAGES.pop(0)
+    img_id = CURRENT_IMAGE["img_id"]
+    img_resized_bytes = CURRENT_IMAGE["resized"]
+    windows_geometry = CURRENT_IMAGE["window_geometry"]
     window.title(f"prnt.sc/{img_id}")
-    tkimg = ImageTk.PhotoImage(img_infos)
+    window.geometry(windows_geometry)
+    tkimg = ImageTk.PhotoImage(img_resized_bytes)
     label.configure(image=tkimg)
     label.image = tkimg
-    if not img_supplied:
-        IMG_HISTORY.append(img_id)
+
+
+def regenerate():
+    global NEXT_IMAGES
+    global PREV_IMAGES
+    while True:
+        while len(NEXT_IMAGES) >= 50 and not KYS:
+            sleep(5)
+        image = None
+        img_id = ""
+        while image is None:
+            while img_id in ALREADY_CHECKED:
+                img_id = ""
+                for i in range(6):
+                    img_id += chr(random.choice([*range(48, 58), *range(97, 121)]))
+            raw = get_image(img_id)
+            ALREADY_CHECKED.append(img_id)
+            if raw is not None:
+                image = raw[-1]
+            if KYS:
+                return
+        img_infos = Image.open(io.BytesIO(image))
+        img_original = image
+        width = img_infos.width
+        height = img_infos.height + 50
+        max_width = 1600
+        min_width = 415
+        max_height = 800
+        print((width, height))
+        if width <= 0 or img_infos.height <= 0:
+            continue
+        if width / height > 16 / 9 and width > max_width:
+            img_infos = img_infos.resize((max_width, int(round(max_width / (width / height)))))
+        if width / height < 16 / 9 and height > max_height:
+            img_infos = img_infos.resize((int(round(max_height / (height / width))), max_height))
+        if width < min_width:
+            window_geometry = f"{min_width}x{height}"
+        else:
+            window_geometry = f"{img_infos.width}x{img_infos.height + 50}"
+
+        NEXT_IMAGES.append({
+            "img_id": img_id,
+            "original": img_original,
+            "resized": img_infos,
+            "window_geometry": window_geometry
+        })
+
+
+def start_threads(amount=3):
+    [Thread(target=regenerate).start() for _ in range(amount)]
 
 
 if __name__ == '__main__':
     if not os.path.isdir("imgs"):
         os.mkdir("imgs")
     os.chdir("imgs")
+
+    start_threads()
 
     root = Tk()
 
@@ -175,18 +220,20 @@ if __name__ == '__main__':
     back_button = Button(root, text="Back", font=FONT, command=lambda: back(root, panel))
     back_button.grid(row=1, column=0, sticky="w", padx=(3, 0))
 
-    save_button = Button(root, text="Save Image", font=FONT, command=lambda: save_image(root.title()[8:], current_image))
+    save_button = Button(root, text="Save Image", font=FONT, command=save_image)
     save_button.grid(row=1, column=1)
 
     folder_button = Button(root, text="Open Folder", font=FONT, command=open_folder)
     folder_button.grid(row=1, column=2)
 
-    browser_button = Button(root, text="Open Browser", font=FONT, command=lambda: open_browser(root.title()[8:]))
+    browser_button = Button(root, text="Open Browser", font=FONT, command=open_browser)
     browser_button.grid(row=1, column=3)
 
     regenerate_button = Button(root, text="Next", font=FONT, command=lambda: next(root, panel))
     regenerate_button.grid(row=1, column=4, sticky="e", padx=(0, 7))
 
-    regenerate(root, panel)
+    next(root, panel)
 
     root.mainloop()
+
+    KYS = True
