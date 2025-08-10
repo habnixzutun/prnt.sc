@@ -59,7 +59,7 @@ KYS = False
 FONT = ("Calibri", 12)
 
 
-def get_image(img_id: str = "abc123"):
+def get_image(img_id):
     site = requests.get(f"https://prnt.sc/{img_id}", headers=headers)
     if not site.ok:
         return
@@ -82,6 +82,11 @@ def get_image(img_id: str = "abc123"):
         return
     if sha1(img.content).hexdigest() == "55d461ab54ac62a5abcc654a568173b483ec498e":
         return
+    if sha1(img.content).hexdigest() == "342003b685eb85850a0dd5637b8ac3274d415af1":  # Telegram
+        return
+    if sha1(img.content).hexdigest() == '3920004e0c02dfcf610c0ac89c3b858407fa0b11':  # Achim
+        return
+    print(img_id, sha1(img.content).hexdigest())
     return img_id, img_src, img.content
 
 
