@@ -1,16 +1,16 @@
-from PIL import Image, ImageTk
-from bs4 import BeautifulSoup
-from threading import Thread
-import tkinter.messagebox
-from hashlib import sha1
-from time import sleep
-from tkinter import *
-import subprocess
-import webbrowser
-import requests
-import random
 import os
 import io
+import random
+import requests
+import subprocess
+import webbrowser
+from tkinter import *
+from time import sleep
+from hashlib import sha1
+import tkinter.messagebox
+from threading import Thread
+from bs4 import BeautifulSoup
+from PIL import Image, ImageTk
 # "\n".join(sorted(lines.split("\n")))
 # "\n".join(sorted(lines.split("\n"), key=lambda x: len(x)))
 # "\n".join(sorted(lines.split("\n"), key=lambda x: 0 - len(x)))
