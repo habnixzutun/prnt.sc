@@ -74,18 +74,18 @@ def get_image(img_id):
         else:
             img_src = "https://" + img_src
     if soup.find("img").get("image-id") != img_id:
-        return
+        return None
     img = requests.get(img_src, headers=headers_img)
     if not img.ok:
-        return
+        return None
     if sha1(img.content).hexdigest() == "20002faf28adfd94ca98cf6ced46f14334b53684":
-        return
+        return None
     if sha1(img.content).hexdigest() == "55d461ab54ac62a5abcc654a568173b483ec498e":
-        return
+        return None
     if sha1(img.content).hexdigest() == "342003b685eb85850a0dd5637b8ac3274d415af1":  # Telegram
-        return
+        return None
     if sha1(img.content).hexdigest() == '3920004e0c02dfcf610c0ac89c3b858407fa0b11':  # Achim
-        return
+        return None
     print(img_id, sha1(img.content).hexdigest())
     return img_id, img_src, img.content
 
@@ -160,6 +160,23 @@ def next(window, label):
     label.image = tkimg
 
 
+def generate_img_id(recursion_level=0):  # max recursion depth 50
+    img_id = ""
+    for i in range(6):
+        img_id += chr(random.choice([*range(48, 58), *range(97, 123)]))  # numbers and lowercase letters
+    if img_id.startswith("0") :
+        if recursion_level <= 50:
+            return generate_img_id(recursion_level=recursion_level + 1)
+        else:
+            return "abcdef"  # will for sure be skipped
+    if random.randint(0, 1) == 0:  # 50% chance for 7 char id
+        if random.randint(0, 4) <= 3:  # starts with 1, 3:1 chance
+            img_id = "1" + img_id
+        else:  # for 1st char 1, 2nd char must be int
+            img_id = "2" + str(random.randint(0, 9)) + img_id[1:]
+    return img_id
+
+
 def regenerate():
     global NEXT_IMAGES
     global PREV_IMAGES
@@ -171,8 +188,7 @@ def regenerate():
         while image is None:
             while img_id in ALREADY_CHECKED:
                 img_id = ""
-                for i in range(6):
-                    img_id += chr(random.choice([*range(48, 58), *range(97, 121)]))
+                img_id = generate_img_id()
             raw = get_image(img_id)
             ALREADY_CHECKED.append(img_id)
             if raw is not None:
