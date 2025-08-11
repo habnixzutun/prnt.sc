@@ -1,16 +1,17 @@
-import os
-import tkinter.messagebox
-import requests
-from bs4 import BeautifulSoup
-from tkinter import *
 from PIL import Image, ImageTk
-import io
-import random
-import subprocess
+from bs4 import BeautifulSoup
 from hashlib import sha1
-import webbrowser
 from threading import Thread
 from time import sleep
+from tkinter import *
+import io
+import os
+import random
+import requests
+import subprocess
+import tkinter.messagebox
+import webbrowser
+# "\n".join(sorted(lines.split("\n")))
 
 
 headers = {
