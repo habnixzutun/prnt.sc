@@ -68,7 +68,7 @@ def check_files_folders():
         os.mkdir("imgs")
     os.chdir("imgs")
     if not os.path.isfile("../blocked hashes.txt"):
-        with open("../blocked hashes.txt", "w") as file:
+        with open("../blocked hashes.txt", "w"):
             pass
     else:
         with open("../blocked hashes.txt", "r") as file:
