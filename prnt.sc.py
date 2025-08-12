@@ -236,7 +236,9 @@ def regenerate():
             window_geometry = f"{min_width}x{height}"
         else:
             window_geometry = f"{img_infos.width}x{img_infos.height + 50}"
-
+        new_width, new_height = [int(x) for x in window_geometry.split("x")]
+        if new_width / new_height > 10/1 or new_width / new_height < 1/10 or width * height < 200:
+            continue
         NEXT_IMAGES.append({
             "img_id": img_id,
             "original": img_original,
