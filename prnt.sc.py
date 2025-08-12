@@ -106,14 +106,17 @@ def save_image():
         f.write(CURRENT_IMAGE["original"])
 
 
-def block_image():
+def block_image(window, label):
     global BLOCKED_HASHES
+    global PREV_IMAGES
     current_file_hash = sha1(CURRENT_IMAGE['original']).hexdigest()
     BLOCKED_HASHES.add(current_file_hash)
     with open("../blocked hashes.txt", "r") as file_in:
         file_in_content = file_in.read()
         with open("../blocked hashes.txt", "w") as file_out:
             file_out.write(file_in_content + f"{current_file_hash}\n")
+    next(window, label)
+    PREV_IMAGES = PREV_IMAGES[:-1]
 
 
 def open_folder():
@@ -267,7 +270,7 @@ if __name__ == '__main__':
     save_button = Button(root, text="Save Image", font=FONT, command=save_image)
     save_button.grid(row=1, column=1)
 
-    block_button = Button(root, text="Block Image", font=FONT, command=block_image)
+    block_button = Button(root, text="Block Image", font=FONT, command=lambda: block_image(root, panel))
     block_button.grid(row=1, column=2)
 
     folder_button = Button(root, text="Open Folder", font=FONT, command=open_folder)
