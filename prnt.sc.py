@@ -56,19 +56,34 @@ CURRENT_IMAGE = dict()
 NEXT_IMAGES = list()  # lists of dicts
 PREV_IMAGES = list()
 ALREADY_CHECKED = list()
+BLOCKED_HASHES = set()
 KYS = False
 
 FONT = ("Calibri", 12)
 
 
+def check_files_folders():
+    global BLOCKED_HASHES
+    if not os.path.isdir("imgs"):
+        os.mkdir("imgs")
+    os.chdir("imgs")
+    if not os.path.isfile("../blocked hashes.txt"):
+        with open("../blocked hashes.txt", "w") as file:
+            pass
+    else:
+        with open("../blocked hashes.txt", "r") as file:
+            BLOCKED_HASHES = set([x[:40] for x in file.read().splitlines()])
+
+
 def get_image(img_id):
+    global BLOCKED_HASHES
     site = requests.get(f"https://prnt.sc/{img_id}", headers=headers)
     if not site.ok:
-        return
+        return None
     soup = BeautifulSoup(site.text, parser="html", features="lxml")
     img_src = soup.find("img")
     if not img_src:
-        return
+        return None
     img_src = img_src["src"]
     if not img_src.startswith("https://"):
         if img_src.startswith("//"):
@@ -80,13 +95,7 @@ def get_image(img_id):
     img = requests.get(img_src, headers=headers_img)
     if not img.ok:
         return None
-    if sha1(img.content).hexdigest() == "20002faf28adfd94ca98cf6ced46f14334b53684":
-        return None
-    if sha1(img.content).hexdigest() == "55d461ab54ac62a5abcc654a568173b483ec498e":
-        return None
-    if sha1(img.content).hexdigest() == "342003b685eb85850a0dd5637b8ac3274d415af1":  # Telegram
-        return None
-    if sha1(img.content).hexdigest() == '3920004e0c02dfcf610c0ac89c3b858407fa0b11':  # Achim
+    if sha1(img.content).hexdigest() in BLOCKED_HASHES:
         return None
     print(img_id, sha1(img.content).hexdigest())
     return img_id, img_src, img.content
@@ -95,6 +104,16 @@ def get_image(img_id):
 def save_image():
     with open(f"{CURRENT_IMAGE['img_id']}.png", "wb") as f:
         f.write(CURRENT_IMAGE["original"])
+
+
+def block_image():
+    global BLOCKED_HASHES
+    current_file_hash = sha1(CURRENT_IMAGE['original']).hexdigest()
+    BLOCKED_HASHES.add(current_file_hash)
+    with open("../blocked hashes.txt", "r") as file_in:
+        file_in_content = file_in.read()
+        with open("../blocked hashes.txt", "w") as file_out:
+            file_out.write(file_in_content + f"{current_file_hash}\n")
 
 
 def open_folder():
@@ -152,6 +171,8 @@ def next(window, label):
         sleep(1/120)
     CURRENT_IMAGE = NEXT_IMAGES[0]
     NEXT_IMAGES.pop(0)
+    if sha1(CURRENT_IMAGE["original"]).hexdigest() in BLOCKED_HASHES:
+        next(window, label)
     img_id = CURRENT_IMAGE["img_id"]
     img_resized_bytes = CURRENT_IMAGE["resized"]
     windows_geometry = CURRENT_IMAGE["window_geometry"]
@@ -171,7 +192,7 @@ def generate_img_id(recursion_level=0):  # max recursion depth 50
             return generate_img_id(recursion_level=recursion_level + 1)
         else:
             return "abcdef"  # will for sure be skipped
-    if random.randint(0, 1) == 0:  # 50% chance for 7 char id
+    if random.randint(0, 2) == 0:  # 33.3% chance for 7 char id
         if random.randint(0, 4) <= 3:  # starts with 1, 3:1 chance
             img_id = "1" + img_id
         else:  # for 1st char 1, 2nd char must be int
@@ -202,7 +223,7 @@ def regenerate():
         width = img_infos.width
         height = img_infos.height + 50
         max_width = 1600
-        min_width = 415
+        min_width = 463
         max_height = 800
         print((width, height))
         if width <= 0 or img_infos.height <= 0:
@@ -229,16 +250,14 @@ def start_threads(amount=3):
 
 
 if __name__ == '__main__':
-    if not os.path.isdir("imgs"):
-        os.mkdir("imgs")
-    os.chdir("imgs")
+    check_files_folders()
 
     start_threads()
 
     root = Tk()
 
     panel = Label(root, image="")
-    panel.grid(row=0, column=0, columnspan=5)
+    panel.grid(row=0, column=0, columnspan=6)
 
     back_button = Button(root, text="Back", font=FONT, command=lambda: back(root, panel))
     back_button.grid(row=1, column=0, sticky="w", padx=(3, 0))
@@ -246,14 +265,17 @@ if __name__ == '__main__':
     save_button = Button(root, text="Save Image", font=FONT, command=save_image)
     save_button.grid(row=1, column=1)
 
+    block_button = Button(root, text="Block Image", font=FONT, command=block_image)
+    block_button.grid(row=1, column=2)
+
     folder_button = Button(root, text="Open Folder", font=FONT, command=open_folder)
-    folder_button.grid(row=1, column=2)
+    folder_button.grid(row=1, column=3)
 
     browser_button = Button(root, text="Open Browser", font=FONT, command=open_browser)
-    browser_button.grid(row=1, column=3)
+    browser_button.grid(row=1, column=4)
 
     regenerate_button = Button(root, text="Next", font=FONT, command=lambda: next(root, panel))
-    regenerate_button.grid(row=1, column=4, sticky="e", padx=(0, 7))
+    regenerate_button.grid(row=1, column=5, sticky="e", padx=(0, 7))
 
     next(root, panel)
 
