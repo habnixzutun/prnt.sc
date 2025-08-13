@@ -58,6 +58,8 @@ PREV_IMAGES = list()
 ALREADY_CHECKED = list()
 BLOCKED_HASHES = set()
 KYS = False
+AMOUNT_SKIPPED = int()
+AMOUNT_BLOCKED = int()
 
 FONT = ("Calibri", 12)
 
@@ -77,6 +79,8 @@ def check_files_folders():
 
 def get_image(img_id):
     global BLOCKED_HASHES
+    global AMOUNT_BLOCKED
+    global AMOUNT_SKIPPED
     site = requests.get(f"https://prnt.sc/{img_id}", headers=headers)
     if not site.ok:
         return None
@@ -96,7 +100,8 @@ def get_image(img_id):
     if not img.ok:
         return None
     if sha1(img.content).hexdigest() in BLOCKED_HASHES:
-        return None
+        AMOUNT_BLOCKED += 1
+        return ""
     print(img_id, sha1(img.content).hexdigest())
     return img_id, img_src, img.content
 
@@ -109,6 +114,7 @@ def save_image():
 def block_image(window, label):
     global BLOCKED_HASHES
     global PREV_IMAGES
+    global AMOUNT_BLOCKED
     current_file_hash = sha1(CURRENT_IMAGE['original']).hexdigest()
     BLOCKED_HASHES.add(current_file_hash)
     with open("../blocked hashes.txt", "r") as file_in:
@@ -117,6 +123,7 @@ def block_image(window, label):
             file_out.write(file_in_content + f"{current_file_hash}\n")
     next(window, label)
     PREV_IMAGES = PREV_IMAGES[:-1]
+    AMOUNT_BLOCKED += 1
 
 
 def open_folder():
@@ -206,6 +213,7 @@ def generate_img_id(recursion_level=0):  # max recursion depth 50
 def regenerate():
     global NEXT_IMAGES
     global PREV_IMAGES
+    global AMOUNT_SKIPPED
     while True:
         while len(NEXT_IMAGES) >= 50 and not KYS:
             sleep(5)
@@ -213,11 +221,12 @@ def regenerate():
         img_id = ""
         while image is None:
             while img_id in ALREADY_CHECKED:
-                img_id = ""
                 img_id = generate_img_id()
             raw = get_image(img_id)
             ALREADY_CHECKED.append(img_id)
-            if raw is not None:
+            if raw == "":
+                AMOUNT_SKIPPED += 1
+            elif raw is not None:
                 image = raw[-1]
             if KYS:
                 return
@@ -287,3 +296,7 @@ if __name__ == '__main__':
     root.mainloop()
 
     KYS = True
+
+    tkinter.messagebox.Message(message=f"Gelöschte übersprungen: {AMOUNT_SKIPPED}\n"
+                                       f"Blockierte übersprungen: {AMOUNT_BLOCKED}",
+                               title="Info").show()
