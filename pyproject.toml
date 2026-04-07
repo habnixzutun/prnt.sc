@@ -1,0 +1,12 @@
+[project]
+name = "prnt-sc"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "bs4>=0.0.2",
+    "httpx>=0.28.1",
+    "lxml>=6.0.2",
+    "pillow>=12.2.0",
+]

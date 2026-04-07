@@ -1,7 +1,7 @@
 import os
 import io
 import random
-import requests
+import httpx
 import subprocess
 import webbrowser
 from tkinter import *
@@ -81,8 +81,8 @@ def get_image(img_id):
     global BLOCKED_HASHES
     global AMOUNT_BLOCKED
     global AMOUNT_SKIPPED
-    site = requests.get(f"https://prnt.sc/{img_id}", headers=headers)
-    if not site.ok:
+    site = httpx.get(f"https://prnt.sc/{img_id}", headers=headers)
+    if not site.is_success:
         return None
     soup = BeautifulSoup(site.text, parser="html", features="lxml")
     img_src = soup.find("img")
@@ -96,8 +96,8 @@ def get_image(img_id):
             img_src = "https://" + img_src
     if soup.find("img").get("image-id") != img_id:
         return None
-    img = requests.get(img_src, headers=headers_img)
-    if not img.ok:
+    img = httpx.get(img_src, headers=headers_img)
+    if not img.is_success:
         return None
     if sha1(img.content).hexdigest() in BLOCKED_HASHES:
         AMOUNT_BLOCKED += 1
